@@ -5,7 +5,7 @@
 # ===== Constants and functions
 
 
-function get_ip_address_for_random_instance_in_ecs_cluster {
+function get_id_for_random_instance_in_ecs_cluster {
     local ecs_cluster_name="$1"
 
     local ecs_instance_arns="$(
@@ -42,12 +42,10 @@ CLUSTER_NAME="$1"
 CONTAINER_NAME="$2"
 CONTAINER_COMMAND="${@:3}"
 
-ECS_INSTANCE_IP_ADDRESS="$(
-    get_ip_address_for_random_instance_in_ecs_cluster "${CLUSTER_NAME}"
-)"
+INSTANCE_ID="$(get_id_for_random_instance_in_ecs_cluster "${CLUSTER_NAME}")"
 CONTAINER_FILTER="label=com.amazonaws.ecs.container-name=${CONTAINER_NAME}"
 
-"$(dirname $BASH_SOURCE)/ec2-ssh" "${ECS_INSTANCE_IP_ADDRESS}" bash <<EOF
+exec ec2-ssh "${INSTANCE_ID}" bash <<EOF
 CONTAINER_ID="\$(docker ps --filter '${CONTAINER_FILTER}' -q)"
 if [[ "\${CONTAINER_ID}" ]]; then
     docker exec "\${CONTAINER_ID}" ${CONTAINER_COMMAND}
