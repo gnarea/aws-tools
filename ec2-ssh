@@ -5,11 +5,32 @@
 # ===== Constants and functions
 
 
-DEFAULT_REMOTE_USER='ec2-user'
-
 KNOWN_HOSTS_FILE_PATH="$HOME/.ssh/ec2_known_hosts"
 
 IP_ADDRESS_JMES_PATH='Reservations[].Instances[].[PublicIpAddress]'
+
+
+function resolve_ssh_target {
+    local target_original="$1"
+
+    local remote_user=""
+    local target_host_original
+
+    if [[ "${target_original}" == *"@"* ]]; then
+        remote_user="${target_original%@*}"
+        target_host_original="${target_original#*@}"
+    else
+        target_host_original="${target_original}"
+    fi
+
+    local ip_address="$(fetch_ip_address_for_target "${target_host_original}")"
+
+    if [[ "${remote_user}" ]]; then
+        echo "${remote_user}@${ip_address}"
+    else
+        echo "${ip_address}"
+    fi
+}
 
 
 function get_ip_address_for_instance_id {
@@ -74,16 +95,14 @@ function is_ip_address {
 if [[ $# < 1 ]]; then
     error_out \
         1 \
-        "Usage: ${0##*/} ASG_NAME|INSTANCE_ID|IP_ADDR [REMOTE_COMMAND...]"
+        "Usage: ${0##*/} [USER@]ASG_NAME|INSTANCE_ID|IP_ADDR [REMOTE_COMMAND...]"
 fi
-TARGET="$1"
-REMOTE_COMMAND="${@:2}"
+TARGET_ORIGINAL="$1"
+shift
 
 
-IP_ADDRESS="$(fetch_ip_address_for_target "${TARGET}")"
-REMOTE_USER="${REMOTE_USER-${DEFAULT_REMOTE_USER}}"
+TARGET_RESOLVED="$(resolve_ssh_target "${TARGET_ORIGINAL}")"
 exec ssh \
-    -o "User ${REMOTE_USER}" \
     -o "UserKnownHostsFile ${KNOWN_HOSTS_FILE_PATH}" \
-    "${IP_ADDRESS}" \
-    ${REMOTE_COMMAND}
+    "${TARGET_RESOLVED}" \
+    "$@"
