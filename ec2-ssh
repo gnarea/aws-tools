@@ -89,6 +89,14 @@ function is_ip_address {
 }
 
 
+function get_extra_ssh_arguments {
+    if tty -s; then
+        # Force SSH to give us a TTY because stdin is a TTY
+        echo '-tt'
+    fi
+}
+
+
 # ===== Main
 
 
@@ -101,8 +109,10 @@ TARGET_ORIGINAL="$1"
 shift
 
 
+EXTRA_SSH_ARGS="$(get_extra_ssh_arguments)"
 TARGET_RESOLVED="$(resolve_ssh_target "${TARGET_ORIGINAL}")"
 exec ssh \
+    ${EXTRA_SSH_ARGS} \
     -o "UserKnownHostsFile ${KNOWN_HOSTS_FILE_PATH}" \
     "${TARGET_RESOLVED}" \
     "$@"
